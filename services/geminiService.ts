@@ -1,17 +1,25 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { DailyLog, JobTask, Trainee, EVALUATION_CRITERIA } from "../types";
 
-// Safe access to process.env for browser environments
+// API 키를 관리하는 함수
 const getApiKey = () => {
+  // ------------------------------------------------------------------
+  // [직접 입력] API 키를 코드에 직접 넣으려면 아래 따옴표 안에 키를 입력하세요.
+  // 예: const MANUAL_API_KEY = "AIzaSy...";
+  // 주의: 코드를 공개 저장소(GitHub 등)에 올릴 경우 키가 노출될 수 있습니다.
+  // ------------------------------------------------------------------
+  const MANUAL_API_KEY = "AIzaSyDHKhVukZNDgEp79_ODU-8d4yk9Ufc-tv0"; 
+
+  if (MANUAL_API_KEY) return MANUAL_API_KEY;
+
   try {
+    // Vercel 환경 변수에서 가져오기 (배포 환경용)
     return process.env.API_KEY || '';
   } catch (e) {
     return '';
   }
 };
-
-const apiKey = getApiKey();
-const ai = new GoogleGenAI({ apiKey });
 
 export const generateDailyReport = async (
   date: string,
@@ -19,15 +27,18 @@ export const generateDailyReport = async (
   evaluations: { trainee: Trainee; score: number; note: string }[],
   weather: string
 ): Promise<string> => {
+  const apiKey = getApiKey();
+  
   if (!apiKey) {
-    return "API Key가 설정되지 않았습니다. .env 파일을 확인해주세요.";
+    return "API Key가 설정되지 않았습니다. services/geminiService.ts 파일의 MANUAL_API_KEY에 키를 입력하거나, 환경 변수를 확인해주세요.";
   }
+
+  // Create instance only when needed to prevent app crash on startup if key is missing
+  const ai = new GoogleGenAI({ apiKey });
 
   // Calculate stats
   const total = evaluations.length;
   const avgScore = (evaluations.reduce((acc, curr) => acc + curr.score, 0) / total).toFixed(1);
-  const excellentCount = evaluations.filter(e => e.score >= 4).length;
-  const needHelpCount = evaluations.filter(e => e.score <= 2).length;
 
   // Prepare detailed list for the prompt
   const detailList = evaluations.map(e => 
@@ -71,6 +82,6 @@ export const generateDailyReport = async (
     return response.text || "요약 생성에 실패했습니다.";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "AI 서비스 연결 중 오류가 발생했습니다.";
+    return "AI 서비스 연결 중 오류가 발생했습니다. API 키를 확인해주세요.";
   }
 };
